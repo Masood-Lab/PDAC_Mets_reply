@@ -1,6 +1,6 @@
 # Statistical reanalysis, primary vs. hepatic metastasis, PDAC spatial ecotypes
 
-Code supporting the reply to a Matters Arising on Khaliq et al., *Spatial
+Code supporting Khaliq et al., *Spatial
 transcriptomic analysis of primary and metastatic pancreatic cancers
 highlights tumor microenvironmental heterogeneity*, Nature Genetics 56,
 2455-2465 (2024).
