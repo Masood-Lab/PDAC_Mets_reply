@@ -61,14 +61,3 @@ inspectable, not just the one submitted figure.
 - **figure_permanova_robustness.R** -- every version of the PERMANOVA test
   reported in the reply (the denominator ladder, leave-one-out variants,
   conditioning on tumour fraction, Aitchison distance) in one figure.
-
-## A note on two numbers that took more than one attempt to get right
-
-The partial PERMANOVA (site conditioned on tumour-epithelial fraction)
-and the PERMDISP dispersion test both have the same issue: `vegan`'s own
-reported p-value doesn't match full enumeration under a restricted
-permutation scheme, even when given the exact permutation matrix by hand.
-The F-statistics `vegan` returns are correct in both cases; the p-values
-are not. Both scripts bypass `vegan`'s built-in significance test for
-that specific line and compute the exact p-value directly by refitting
-the model across all 512 valid arrangements and counting.
