@@ -1,9 +1,7 @@
 # Spatial transcriptomic analysis of primary and metastatic pancreatic cancers highlights tumor microenvironmental heterogeneity
 
-Code supporting Khaliq et al., *Spatial
-transcriptomic analysis of primary and metastatic pancreatic cancers
-highlights tumor microenvironmental heterogeneity*, Nature Genetics 56,
-2455-2465 (2024).
+Code supporting the analysis published in Nature Genetics 56, 2455-2465
+(2024).
 
 ## Reproducing the analysis
 
@@ -64,59 +62,54 @@ inspectable, not just the one submitted figure.
 
 ## Why we report exact enumeration rather than vegan's permutation p-value
 
-Two results in the reply -- the partial PERMANOVA (site conditioned on
-tumour-epithelial fraction) and the PERMDISP dispersion test -- are reported
-from full enumeration of the restricted permutation set rather than from
-`vegan`'s own significance test. The F-statistics are identical either way.
-The reason is a difference in bookkeeping convention, not an error in
-`vegan` -- but the exact mechanism is more specific than "supply 511 instead
-of 512" or vice versa. It goes the *opposite* way for the two PERMANOVA
-models used in this reply, and both directions are worth stating precisely
-so anyone re-deriving this lands on the same numbers.
+One result in this repository -- the community-level PERMANOVA (`bc ~
+site`) -- is reported from full enumeration of the restricted permutation
+set rather than from `vegan::adonis2`'s own significance test. The
+F-statistic is identical either way; only the p-value convention differs,
+and the difference is fully accounted for.
 
 **The permutation floor at nine matched pairs.** Permuting site labels
 within patient gives 2^9 = 512 distinct arrangements. Exactly two of them
-reach the observed F for the site-only model: the identity arrangement and
-its complete complement. Full enumeration returns 2/512 = 0.0039, the
-smallest value this design admits.
+reach the observed F: the identity arrangement and its complete
+complement. Full enumeration returns 2/512 = 0.0039, the smallest value
+this design admits.
 
-**Simple model (`bc ~ site`).** Supplying `adonis2` the full 512-row matrix,
-identity included, gives P = 0.005848 (3/513) -- `adonis2` adds its own "+1"
-for the observed statistic on top of a matrix that already contains it,
-double-counting the identity row. Supplying only the 511 non-identity
-arrangements removes that double count and returns 2/512 = 0.003906 exactly,
-matching hand enumeration. Confirmed directly:
+**Why `adonis2` reports a different number.** `adonis2` uses the
+convention `(count + 1) / (nperm + 1)`. Supplied the full 512-row
+permutation matrix (identity included), it returns 3/513 = 0.00585 --
+because the matrix already contains the identity arrangement and
+`adonis2` adds its own "+1" for the observed statistic on top of that,
+counting the identity row twice. This is demonstrated directly in
+`verify_reply_numbers.R`, Section M:
 
-    adonis2(D ~ site, permutations = P512)  ->  P = 0.005848
-    adonis2(D ~ site, permutations = P511)  ->  P = 0.003906  (correct)
+    adonis2(bc ~ site, permutations = P512)   ->  P = 0.00585  (3/513)
+    exact enumeration (this repository)       ->  P = 0.00391  (2/512)
 
-**Partial model (`bc ~ tf + site, by = "terms"`) -- the opposite fix.**
-Tested the same way, both directions:
+Both are the floor of the same test under two different conventions;
+neither is wrong. Section M's own comment states this directly, and the
+check `ok("vegan P is at its own floor", ..., 3/513, ...)` asserts it in
+code, so this is reproducible by running that script, not just claimed
+here.
 
-    adonis2(D ~ tf + site, permutations = P512, by="terms")  ->  P = 0.003899  (correct)
-    adonis2(D ~ tf + site, permutations = P511, by="terms")  ->  P = 0.001953  (wrong)
+**A note on scope.** We looked into whether a similarly precise account
+could be given for the partial PERMANOVA (site conditioned on
+tumour-epithelial fraction), which this repository also reports via exact
+enumeration rather than `adonis2`'s own test. An earlier version of this
+section made a specific claim about that case; on review, the claim was
+not fully supported by what is actually checked in the deposited scripts,
+so it has been removed rather than repeated. The partial-model p-value
+reported in the reply (0.0039) comes from direct enumeration in
+`verify_analysis_full.R`, independent of `adonis2` entirely -- that
+computation stands on its own and does not depend on the withdrawn
+claim.
 
-For this model the full 512-row matrix, identity included, gives the exact
-answer; excluding identity undercounts by one hit and returns 1/512 instead
-of 2/512. This is the reverse of the simple-model case. `adonis2`'s
-row-recycling for a sequential (`by="terms"`) two-term model evidently
-handles the observed-vs-permuted accounting differently once a covariate
-term precedes the term of interest, and empirically that difference exactly
-cancels the "+1" convention that requires the 511-only fix for the single-
-term model. We have not traced this to a specific line in `vegan`'s source;
-what's stated above is what direct testing shows, not a claim about why.
-
-Both directions are independently reproducible from this repository
-(`verify_analysis_full.R`, `verify_reply_numbers.R` Section M) and were
-confirmed on a second machine before being written up here. **If you plan to
-fix this by feeding `adonis2` a reduced permutation matrix, check which of
-the two directions above applies to your specific formula** -- it is not
-the same fix for a single-term and a sequential two-term model.
-
-**PERMDISP.** `permutest.betadisper` permutes distances-to-centroid with
-group centroids held fixed from the observed fit; `permdisp_dispersion_test.R`
-instead refits `betadisper()` under each permuted labelling, so centroids
-are recomputed each time. This is the more conservative of the two and is
-what we report. Both approaches agree on the substantive conclusion here:
-all four tests (Bray-Curtis and Aitchison, centroid and spatial median) are
-non-significant.
+**PERMDISP.** `permutest.betadisper` also does not return the same
+p-value as full enumeration under this restricted permutation scheme,
+even when handed the exact permutation matrix directly -- the F-statistic
+agrees, the p-value does not. Unlike the partial-PERMANOVA case above,
+this is demonstrated directly in `permdisp_dispersion_test.R` (not just
+asserted): the script includes a direct `vegan::permutest.betadisper`
+call on the same 512-arrangement set as a side-by-side comparison. The
+p-values used in the reply come from refitting `betadisper()` under each
+of the 512 valid arrangements directly and counting, not from
+`permutest()`.
